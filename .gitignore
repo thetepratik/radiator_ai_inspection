@@ -1,0 +1,117 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+venv.bak/
+env.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Testing
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb
+
+# Dataset (large files - don't commit)
+dataset/images/train/*
+dataset/images/val/*
+dataset/images/test/*
+dataset/labels/train/*
+dataset/labels/val/*
+dataset/labels/test/*
+!dataset/images/.gitkeep
+!dataset/labels/.gitkeep
+
+# Model files (large - generated during training)
+models/radiator_detector/weights/
+models/radiator_detector/runs/
+*.pt
+*.onnx
+*.tflite
+
+# Results (generated during operation)
+results/inspections/*.json
+results/logs/*.log
+!results/.gitkeep
+
+# Generated files
+*.tmp
+*.log
+*.pkl
+*.pickle
+*.npz
+*.npy
+
+# OS
+.DS_Store
+Thumbs.db
+.directory
+
+# Documentation
+docs/.build/
+site/
+
+# Local development
+.env
+.env.local
+secrets.txt
+private_keys/
+
+# Label Studio exports
+annotations/exports/
+
+# CVAT exports
+exports/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
