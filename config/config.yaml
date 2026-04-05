@@ -19,8 +19,8 @@ model:
   batch_size: 16
   img_size: 640
   
-  # Device: 0 for GPU (first GPU), -1 for CPU
-  device: 0
+  # Device: 'cpu' for CPU, 0 for GPU (first GPU), or 0,1,2,3 for Multi-GPU
+  device: 'cpu'
   
   # Learning rate
   learning_rate: 0.01
@@ -53,58 +53,88 @@ dataset:
 # COMPONENT CLASSES
 # ============================================================================
 components:
-  - fan
-  - pipe
-  - connector
-  - drain_plug
-  - rubber_grommet
-  - clip
-  - radiator_fin
+  - barcode
+  - cap
+  - condenser_stud
+  - dust_cap
+  - fan_chip
+  - flap
+  - grommet
+  - leak_test_mark
+  - locking_nut
+  - mickey_mouse
+  - wire
+  
 
 # ============================================================================
 # COMPONENT-SPECIFIC RULES
 # ============================================================================
 component_rules:
-  fan:
+  barcode:
     required: true
     min_count: 1
     max_count: 1
-    detection_threshold: 0.6
-  
-  pipe:
-    required: true
-    min_count: 2
-    max_count: 4
     detection_threshold: 0.5
   
-  connector:
+  cap:
+    required: true
+    min_count: 1
+    max_count: 1
+    detection_threshold: 0.5
+  
+  condenser_stud:
     required: true
     min_count: 1
     max_count: 2
-    detection_threshold: 0.6
+    detection_threshold: 0.5
   
-  drain_plug:
+  dust_cap:
     required: true
     min_count: 1
     max_count: 1
     detection_threshold: 0.5
   
-  rubber_grommet:
+  fan_chip:
     required: true
-    min_count: 3
-    max_count: 5
+    min_count: 1
+    max_count: 2
     detection_threshold: 0.5
   
-  clip:
+  flap:
     required: true
-    min_count: 4
-    max_count: 8
+    min_count: 1
+    max_count: 2
     detection_threshold: 0.5
   
-  radiator_fin:
+  grommet:
+    required: true
+    min_count: 1
+    max_count: 3
+    detection_threshold: 0.5
+  
+  leak_test_mark:
+    required: true
+    min_count: 1
+    max_count: 1
+    detection_threshold: 0.5
+  
+  locking_nut:
+    required: true
+    min_count: 1
+    max_count: 2
+    detection_threshold: 0.5
+  
+  mickey_mouse:
     required: false
     min_count: 0
+    max_count: 1
     detection_threshold: 0.4
+  
+  wire:
+    required: true
+    min_count: 1
+    max_count: 2
+    detection_threshold: 0.5
 
 # ============================================================================
 # INSPECTION RULES
@@ -112,9 +142,16 @@ component_rules:
 inspection:
   # Required components that must be present for OK status
   required_components:
-    - fan
-    - pipe
-    - connector
+    - barcode
+    - cap
+    - condenser_stud
+    - dust_cap
+    - fan_chip
+    - flap
+    - grommet
+    - leak_test_mark
+    - locking_nut
+    - wire
   
   # Minimum confidence threshold for detection
   min_confidence: 0.5
@@ -227,9 +264,9 @@ ui:
 # ============================================================================
 performance:
   # Use GPU acceleration
-  use_gpu: true
+  use_gpu: false
   
-  # GPU device ID (0, 1, 2, etc.)
+  # GPU device ID (0, 1, 2, etc.) - only used if CUDA available
   gpu_device: 0
   
   # CPU threads

@@ -14,7 +14,7 @@ class RadiatorModelTrainer:
     
     def __init__(self, config_path="config/config.yaml"):
         """Initialize trainer with configuration"""
-        with open(config_path, 'r') as f:
+        with open(config_path, 'r', encoding='utf-8') as f:
             self.config = yaml.safe_load(f)
         
         self.model_name = self.config['model']['name']
@@ -23,7 +23,16 @@ class RadiatorModelTrainer:
         self.img_size = self.config['model']['img_size']
         self.device = self.config['model']['device']
         
-        print(f"Using device: {'GPU' if torch.cuda.is_available() else 'CPU'}")
+        # Auto-detect device if GPU requested but not available
+        if isinstance(self.device, int):
+            if not torch.cuda.is_available():
+                print(f"[WARNING] GPU requested (device={self.device}) but CUDA not available")
+                print(f"[WARNING] Switching to CPU")
+                self.device = 'cpu'
+        
+        device_type = 'GPU' if (isinstance(self.device, int) and torch.cuda.is_available()) else 'CPU'
+        print(f"Using device: {device_type}")
+        print(f"Device setting: {self.device}")
     
     def create_dataset_yaml(self):
         """Create dataset.yaml for YOLO training"""
@@ -107,7 +116,6 @@ class RadiatorModelTrainer:
             flipud=0.0,
             fliplr=0.5,
             perspective=0.0,
-            flipud=0.0,
             verbose=True,
         )
         

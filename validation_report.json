@@ -1,0 +1,15 @@
+{
+  "timestamp": ".",
+  "statistics": {
+    "total_images": 370,
+    "total_labels": 0,
+    "valid_labels": 81,
+    "invalid_labels": 214,
+    "missing_labels": 75,
+    "extra_labels": 0,
+    "missing_images": 0,
+    "invalid_format": 0
+  },
+  "total_images": 370,
+  "valid_percentage": 21.891891891891895
+}

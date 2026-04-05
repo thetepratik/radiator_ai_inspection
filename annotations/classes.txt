@@ -1,0 +1,11 @@
+barcode
+cap
+condenser_stud
+dust_cap
+fan_chip
+flap
+grommet
+leak_test_mark
+locking_nut
+mickey_mouse
+wire

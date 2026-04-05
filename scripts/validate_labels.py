@@ -233,7 +233,7 @@ def main():
     """Main validation function"""
     validator = LabelValidator(
         dataset_path="./dataset",
-        num_classes=7  # fan, pipe, connector, drain_plug, grommet, clip, fin
+        num_classes=11  # barcode, cap, condenser_stud, dust_cap, fan_chip, flap, grommet, leak_test_mark, locking_nut, mickey_mouse, wire
     )
     
     # Run validation
