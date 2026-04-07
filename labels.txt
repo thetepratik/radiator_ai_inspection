@@ -1,0 +1,1 @@
+{"0": "barcode", "1": "cap", "2": "condenser_stud", "3": "dust_cap", "4": "fan_chip", "5": "flap", "6": "grommet", "7": "leak_test_mark", "8": "locking_nut", "9": "mickey_mouse", "10": "wire"}

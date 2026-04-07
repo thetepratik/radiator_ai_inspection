@@ -97,16 +97,27 @@ if page == "Home":
     
     with col2:
         st.markdown("### 🎯 Detection Components")
-        components = [
-            "✓ Fan Assembly",
-            "✓ Connector",
-            "✓ Pipe Routing",
-            "✓ Drain Plug",
-            "✓ Rubber Grommet",
-            "✓ Mounting Clips",
-            "✓ Radiator Fins"
-        ]
-        st.write("\n".join(components))
+        try:
+            import yaml
+            import os
+            # Use absolute path to ensure config is always found
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            config_path = os.path.join(os.path.dirname(current_dir), "config", "config.yaml")
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+            components = config.get("components", [])
+            formatted_components = [f"✓ {c.replace('_', ' ').title()}" for c in components]
+        except:
+            formatted_components = [
+                "✓ Fan Assembly",
+                "✓ Connector",
+                "✓ Pipe Routing",
+                "✓ Drain Plug",
+                "✓ Rubber Grommet",
+                "✓ Mounting Clips",
+                "✓ Radiator Fins"
+            ]
+        st.write("\n".join(formatted_components))
     
     st.divider()
     
