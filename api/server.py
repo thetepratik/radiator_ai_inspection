@@ -15,8 +15,17 @@ from pathlib import Path
 from datetime import datetime
 import logging
 
+import sys
+import os
+
+# Add project root to path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
+
 # Import inspection logic
-from inspection_logic import InspectionEngine, Detection
+from inspection.inspection_logic import InspectionEngine, Detection
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -43,6 +52,8 @@ model = None
 inspection_engine = None
 results_dir = Path("results/inspections")
 
+import yaml
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize model and engine on startup"""
@@ -58,8 +69,22 @@ async def startup_event():
         raise
     
     logger.info("Initializing inspection engine...")
-    inspection_engine = InspectionEngine()
-    logger.info("✓ Inspection engine initialized")
+    try:
+        config_path = os.path.join(parent_dir, "config", "config.yaml")
+        with open(config_path, "r", encoding="utf-8") as f:
+            full_config = yaml.safe_load(f)
+        
+        engine_config = {
+            'required_components': full_config['inspection']['required_components'],
+            'min_confidence': full_config['inspection']['min_confidence'],
+            'max_defects': full_config['inspection']['max_defects'],
+            'component_rules': full_config.get('component_rules', {})
+        }
+        inspection_engine = InspectionEngine(config=engine_config)
+        logger.info("✓ Inspection engine initialized with absolute config.yaml path")
+    except Exception as e:
+        logger.warning(f"Failed to load config.yaml: {e}. Falling back to default config.")
+        inspection_engine = InspectionEngine()
     
     # Create results directory
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -348,7 +373,7 @@ COMPONENTS DETECTED:
 
 if __name__ == "__main__":
     uvicorn.run(
-        "server:app",
+        "api.server:app",
         host="0.0.0.0",
         port=8000,
         reload=False,
