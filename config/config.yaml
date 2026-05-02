@@ -159,6 +159,51 @@ inspection:
   # Maximum allowed defects (0 = no defects allowed)
   max_defects: 0
   
+  # Side-specific inspection views
+  # Define which components are expected on each side
+  views:
+    default:
+      name: "Full Inspection"
+      required_components:
+        - barcode
+        - cap
+        - condenser_stud
+        - dust_cap
+        - fan_chip
+        - flap
+        - grommet
+        - leak_test_mark
+        - locking_nut
+        - wire
+    front_side:
+      name: "Front View"
+      required_components:
+        - cap
+        - locking_nut
+    back_side:
+      name: "Back View"
+      required_components:
+        - flap
+        - wire
+        - locking_nut
+        - grommet
+        - cap
+        - dust_cap
+        - fan_chip
+    top_view:
+      name: "Top View"
+      required_components:
+        - cap
+        - grommet
+        - condenser_stud
+        - leak_test_mark
+    bottom_view:
+      name: "Bottom View"
+      required_components:
+        - barcode
+        - grommet
+        - locking_nut
+  
   # Damage detection settings
   damage_detection:
     enabled: true

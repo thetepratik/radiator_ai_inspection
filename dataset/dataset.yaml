@@ -11,7 +11,7 @@ names:
   9: mickey_mouse
   10: wire
 nc: 11
-path: C:\Users\PRATIK\Downloads\radiator_ai_inspection\dataset
+path: c:\Users\Ruchika\OneDrive\Desktop\RuchiVerse\VIT\AIDS_SY-2\projects\EDI2\radiator_ai_inspection\dataset
 test: images/test
 train: images/train
 val: images/val
