@@ -27,9 +27,10 @@ class InspectionEngine:
             config: Configuration dictionary with inspection rules
         """
         self.config = config or self.default_config()
-        self.required_components = self.config.get('required_components', [])
+        self.all_required_components = self.config.get('required_components', [])
         self.min_confidence = self.config.get('min_confidence', 0.5)
         self.max_defects = self.config.get('max_defects', 0)
+        self.views = self.config.get('views', {})
     
     @staticmethod
     def default_config():
@@ -53,16 +54,23 @@ class InspectionEngine:
             }
         }
     
-    def check_component_presence(self, detections: List[Detection]) -> Dict:
+    def check_component_presence(self, detections: List[Detection], view: str = None) -> Dict:
         """
         Check if all required components are present
         
         Args:
             detections: List of detected components
+            view: Optional specific view/side to check against
             
         Returns:
             Dictionary with component presence check results
         """
+        # Determine required components for this view
+        required_components = self.all_required_components
+        if view and view in self.views:
+            required_components = self.views[view].get('required_components', required_components)
+        elif view == 'default':
+            required_components = self.all_required_components
         component_counts = {}
         component_detections = {}
         
@@ -82,7 +90,7 @@ class InspectionEngine:
         }
         
         # Check each required component
-        for component in self.required_components:
+        for component in required_components:
             count = component_counts.get(component, 0)
             min_required = self.config['component_rules'].get(component, {}).get('min_count', 1)
             
@@ -183,18 +191,19 @@ class InspectionEngine:
         
         return installation_results
     
-    def generate_final_decision(self, detections: List[Detection]) -> Dict:
+    def generate_final_decision(self, detections: List[Detection], view: str = None) -> Dict:
         """
         Generate final OK/NOT OK decision based on all checks
         
         Args:
             detections: List of detected components
+            view: Optional specific view/side to check against
             
         Returns:
             Final inspection result dictionary
         """
         # Perform all checks
-        presence_check = self.check_component_presence(detections)
+        presence_check = self.check_component_presence(detections, view=view)
         condition_check = self.check_component_condition(detections)
         installation_check = self.check_installation_rules(detections)
         

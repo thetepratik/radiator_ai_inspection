@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 from datetime import datetime
 import logging
+from contextlib import asynccontextmanager
 
 import sys
 import os
@@ -32,10 +33,71 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize model and engine on startup"""
+    global model, inspection_engine
+    
+    logger.info("Loading YOLO model...")
+    model_path = Path("models/radiator_detector/weights/best.pt")
+    
+    if not model_path.exists():
+        # Try to find any other weights in models/
+        logger.warning(f"⚠️ Model weights not found at {model_path}")
+        logger.info("Searching for alternative weights...")
+        
+        # Look for any .pt files in models directory
+        alternative_weights = list(Path("models").rglob("*.pt"))
+        if alternative_weights:
+            model_path = alternative_weights[0]
+            logger.info(f"Found alternative weights: {model_path}")
+        else:
+            logger.error("❌ No model weights (.pt files) found in the 'models' directory.")
+            logger.info("Please run 'python scripts/train_model.py' to train the model first.")
+            # We don't raise here to allow the server to start, but model will be None
+    
+    if model_path.exists():
+        try:
+            model = YOLO(str(model_path))
+            logger.info(f"✓ Model loaded successfully from {model_path}")
+        except Exception as e:
+            logger.error(f"❌ Failed to load model: {e}")
+    
+    logger.info("Initializing inspection engine...")
+    try:
+        config_path = os.path.join(parent_dir, "config", "config.yaml")
+        if os.path.exists(config_path):
+            with open(config_path, "r", encoding="utf-8") as f:
+                full_config = yaml.safe_load(f)
+            
+            engine_config = {
+                'required_components': full_config['inspection']['required_components'],
+                'min_confidence': full_config['inspection']['min_confidence'],
+                'max_defects': full_config['inspection']['max_defects'],
+                'component_rules': full_config.get('component_rules', {}),
+                'views': full_config['inspection'].get('views', {})
+            }
+            inspection_engine = InspectionEngine(config=engine_config)
+            logger.info("✓ Inspection engine initialized")
+        else:
+            logger.warning(f"Config file not found at {config_path}")
+            inspection_engine = InspectionEngine()
+    except Exception as e:
+        logger.warning(f"Failed to load config.yaml: {e}. Falling back to default config.")
+        inspection_engine = InspectionEngine()
+    
+    # Create results directory
+    results_dir.mkdir(parents=True, exist_ok=True)
+    
+    yield
+    # Clean up (if needed)
+    logger.info("Shutting down server...")
+
 app = FastAPI(
     title="Radiator Inspection API",
     description="AI-Based Visual Inspection System for Automotive Radiators",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Add CORS middleware
@@ -54,40 +116,6 @@ results_dir = Path("results/inspections")
 
 import yaml
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize model and engine on startup"""
-    global model, inspection_engine
-    
-    logger.info("Loading YOLO model...")
-    try:
-        model_path = "models/radiator_detector/weights/best.pt"
-        model = YOLO(model_path)
-        logger.info(f"✓ Model loaded from {model_path}")
-    except Exception as e:
-        logger.error(f"✗ Failed to load model: {e}")
-        raise
-    
-    logger.info("Initializing inspection engine...")
-    try:
-        config_path = os.path.join(parent_dir, "config", "config.yaml")
-        with open(config_path, "r", encoding="utf-8") as f:
-            full_config = yaml.safe_load(f)
-        
-        engine_config = {
-            'required_components': full_config['inspection']['required_components'],
-            'min_confidence': full_config['inspection']['min_confidence'],
-            'max_defects': full_config['inspection']['max_defects'],
-            'component_rules': full_config.get('component_rules', {})
-        }
-        inspection_engine = InspectionEngine(config=engine_config)
-        logger.info("✓ Inspection engine initialized with absolute config.yaml path")
-    except Exception as e:
-        logger.warning(f"Failed to load config.yaml: {e}. Falling back to default config.")
-        inspection_engine = InspectionEngine()
-    
-    # Create results directory
-    results_dir.mkdir(parents=True, exist_ok=True)
 
 
 @app.get("/")
@@ -106,17 +134,19 @@ async def health_check():
     return {
         "status": "healthy",
         "model_loaded": model is not None,
-        "engine_ready": inspection_engine is not None
+        "engine_ready": inspection_engine is not None,
+        "available_views": list(inspection_engine.config.get('views', {}).keys()) if inspection_engine else []
     }
 
 
 @app.post("/inspect")
-async def inspect_radiator(file: UploadFile = File(...)):
+async def inspect_radiator(file: UploadFile = File(...), view: str = None):
     """
     Main inspection endpoint
     
     Args:
         file: Image file of radiator
+        view: Optional side/view to check (e.g., front_side, back_side)
         
     Returns:
         Inspection result with OK/NOT OK status
@@ -127,6 +157,13 @@ async def inspect_radiator(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(contents)).convert('RGB')
         
         logger.info(f"Processing image: {file.filename}")
+        
+        # Check if model is loaded
+        if model is None:
+            raise HTTPException(
+                status_code=503, 
+                detail="Model not loaded. Please ensure training is complete and best.pt exists."
+            )
         
         # Run YOLO inference
         results = model.predict(source=image, conf=0.5, verbose=False)
@@ -153,7 +190,7 @@ async def inspect_radiator(file: UploadFile = File(...)):
                     detections.append(detection)
         
         # Generate inspection report
-        inspection_result = inspection_engine.generate_final_decision(detections)
+        inspection_result = inspection_engine.generate_final_decision(detections, view=view)
         inspection_result['image_filename'] = file.filename
         
         # Save result
@@ -182,12 +219,13 @@ async def inspect_radiator(file: UploadFile = File(...)):
 
 
 @app.post("/inspect/batch")
-async def inspect_batch(files: list[UploadFile] = File(...)):
+async def inspect_batch(files: list[UploadFile] = File(...), view: str = None):
     """
     Batch inspection endpoint
     
     Args:
         files: Multiple image files
+        view: Optional side/view to check for all images in batch
         
     Returns:
         List of inspection results
@@ -224,7 +262,7 @@ async def inspect_batch(files: list[UploadFile] = File(...)):
                         detections.append(detection)
             
             # Generate inspection report
-            inspection_result = inspection_engine.generate_final_decision(detections)
+            inspection_result = inspection_engine.generate_final_decision(detections, view=view)
             
             results.append({
                 "filename": file.filename,
