@@ -8,9 +8,10 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from ultralytics import YOLO
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import io
 import json
+import base64
 from pathlib import Path
 from datetime import datetime
 import logging
@@ -117,6 +118,135 @@ results_dir = Path("results/inspections")
 import yaml
 
 
+def draw_annotated_image(
+    image: Image.Image,
+    detections: list,
+    inspection_result: dict
+) -> str:
+    """
+    Draw colored bounding boxes on the image and return as base64 PNG.
+
+    - GREEN box  → component detected with OK status
+    - RED box    → component detected but count is insufficient (COUNT_MISMATCH)
+    - RED banner → missing components (no box, never detected)
+
+    Args:
+        image: Original PIL Image
+        detections: List of Detection objects
+        inspection_result: Output of generate_final_decision()
+
+    Returns:
+        Base64-encoded PNG string
+    """
+    img = image.copy()
+    draw = ImageDraw.Draw(img)
+    img_w, img_h = img.size
+
+    present_components = inspection_result.get('component_presence', {}).get('present_components', {})
+    count_mismatches = set(inspection_result.get('component_presence', {}).get('count_mismatches', []))
+    missing_components = inspection_result.get('component_presence', {}).get('missing_components', [])
+
+    # Try to load a font; fall back to default if unavailable
+    try:
+        font = ImageFont.truetype("arial.ttf", max(12, img_h // 40))
+        small_font = ImageFont.truetype("arial.ttf", max(10, img_h // 55))
+    except Exception:
+        font = ImageFont.load_default()
+        small_font = font
+
+    BOX_WIDTH = max(2, img_w // 300)
+
+    for det in detections:
+        class_name = det.class_name
+        conf = det.confidence
+        x_c, y_c, w, h = det.bbox  # absolute pixel coords (x_center, y_center, w, h)
+
+        x1 = int(x_c - w / 2)
+        y1 = int(y_c - h / 2)
+        x2 = int(x_c + w / 2)
+        y2 = int(y_c + h / 2)
+
+        # Decide colour
+        if class_name in count_mismatches:
+            color = (220, 38, 38)   # red — detected but not enough
+        elif class_name in present_components:
+            color = (34, 197, 94)   # green — detected and OK
+        else:
+            color = (234, 179, 8)   # amber — detected but not required / low conf
+
+        # Draw rectangle
+        draw.rectangle([x1, y1, x2, y2], outline=color, width=BOX_WIDTH)
+
+        # Label background + text
+        label = f"{class_name} {conf:.0%}"
+        try:
+            bbox_text = draw.textbbox((x1, y1), label, font=small_font)
+            tw = bbox_text[2] - bbox_text[0]
+            th = bbox_text[3] - bbox_text[1]
+        except AttributeError:
+            tw, th = draw.textsize(label, font=small_font)
+
+        label_y = max(0, y1 - th - 4)
+        draw.rectangle([x1, label_y, x1 + tw + 6, label_y + th + 4], fill=color)
+        draw.text((x1 + 3, label_y + 2), label, fill=(255, 255, 255), font=small_font)
+
+    # Load predefined missing regions (if any) from config
+    try:
+        missing_cfg_path = Path("config/missing_regions.yaml")
+        if missing_cfg_path.exists():
+            with open(missing_cfg_path, "r", encoding="utf-8") as f:
+                missing_cfg = yaml.safe_load(f) or {}
+        else:
+            missing_cfg = {}
+    except Exception:
+        missing_cfg = {}
+
+    # Draw Red Outline Boxes for MISSING components using predefined regions or fallback
+    if missing_components:
+        for i, comp in enumerate(missing_components):
+            # Try to get region from config (expects bbox as [x_center, y_center, w, h])
+            region = missing_cfg.get(comp)
+            if region and isinstance(region, (list, tuple)) and len(region) == 4:
+                x_c, y_c, w, h = region
+                x1 = int(x_c - w / 2)
+                y1 = int(y_c - h / 2)
+                x2 = int(x_c + w / 2)
+                y2 = int(y_c + h / 2)
+                draw.rectangle([x1, y1, x2, y2], outline=(220, 38, 38), width=BOX_WIDTH + 2)
+                # Label
+                label = f"MISSING: {comp.upper()}"
+                try:
+                    txt_w, txt_h = draw.textsize(label, font=font)
+                    txt_x = x1 + (w - txt_w) // 2
+                    txt_y = y1 + (h - txt_h) // 2
+                    draw.text((txt_x, txt_y), label, fill=(255, 255, 255), font=font)
+                except Exception:
+                    draw.text((x1 + 4, y1 + 4), label, fill=(255, 255, 255))
+            else:
+                # Fallback: draw centered placeholder box
+                box_w = max(30, img_w // 10)
+                box_h = max(30, img_h // 10)
+                x1 = int((img_w - box_w) / 2)
+                y1 = int(img_h // 4 + i * (box_h + 10))
+                x2 = x1 + box_w
+                y2 = y1 + box_h
+                draw.rectangle([x1, y1, x2, y2], outline=(220, 38, 38), width=BOX_WIDTH + 2)
+                label = f"MISSING: {comp.upper()}"
+                try:
+                    txt_w, txt_h = draw.textsize(label, font=font)
+                    txt_x = x1 + (box_w - txt_w) // 2
+                    txt_y = y1 + (box_h - txt_h) // 2
+                    draw.text((txt_x, txt_y), label, fill=(255, 255, 255), font=font)
+                except Exception:
+                    draw.text((x1 + 4, y1 + 4), label, fill=(255, 255, 255))
+
+
+    # Encode to base64
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    return base64.b64encode(buf.read()).decode('utf-8')
+
 
 @app.get("/")
 async def root():
@@ -168,7 +298,7 @@ async def inspect_radiator(file: UploadFile = File(...), view: str = None):
         # Run YOLO inference
         results = model.predict(source=image, conf=0.5, verbose=False)
         
-        # Extract detections
+        # Extract detections (store absolute pixel coords for annotation)
         detections = []
         if results and len(results) > 0:
             for result in results:
@@ -193,6 +323,9 @@ async def inspect_radiator(file: UploadFile = File(...), view: str = None):
         inspection_result = inspection_engine.generate_final_decision(detections, view=view)
         inspection_result['image_filename'] = file.filename
         
+        # --- Annotate image with colored bounding boxes ---
+        annotated_b64 = draw_annotated_image(image, detections, inspection_result)
+        
         # Save result
         result_id = datetime.now().strftime("%Y%m%d_%H%M%S")
         result_file = results_dir / f"inspection_{result_id}.json"
@@ -210,7 +343,16 @@ async def inspect_radiator(file: UploadFile = File(...), view: str = None):
             "missing_components": inspection_result['component_presence']['missing_components'],
             "confidence": inspection_result['confidence_score'],
             "failures": inspection_result['failures'],
-            "warnings": inspection_result['warnings']
+            "warnings": inspection_result['warnings'],
+            "annotated_image": annotated_b64,
+            "detections": [
+                {
+                    "class_name": d.class_name,
+                    "confidence": round(d.confidence, 4),
+                    "bbox": list(d.bbox)
+                }
+                for d in detections
+            ]
         }
     
     except Exception as e:

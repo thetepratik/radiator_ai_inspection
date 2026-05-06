@@ -1,0 +1,20 @@
+path: ../dataset
+
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: fan_chip
+  1: wire
+  2: locking_nut
+  3: dust_cap
+  4: cap
+  5: barcode
+  6: grommet
+  7: condenser_stud
+  8: mickey_mouse
+  9: leak_test_mark
+
+
+  

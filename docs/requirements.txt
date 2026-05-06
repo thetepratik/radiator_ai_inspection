@@ -1,0 +1,38 @@
+# Core Deep Learning & Computer Vision
+torch==2.0.1
+torchvision==0.15.2
+ultralytics==8.0.200
+opencv-python==4.8.1.78
+
+# Data Processing
+numpy==1.24.3
+pandas==2.0.3
+Pillow==10.0.1
+scikit-image==0.21.0
+scipy==1.11.3
+
+# Data Augmentation
+albumentations==1.3.1
+
+# API Backend
+fastapi==0.104.1
+uvicorn==0.24.0
+python-multipart==0.0.6
+pydantic==2.4.2
+
+# Frontend
+streamlit==1.28.1
+plotly==5.17.0
+
+# Configuration & Utils
+pyyaml==6.0.1
+python-dotenv==1.0.0
+requests==2.31.0
+
+# Optional: Model conversion & deployment
+onnx==1.14.1
+onnxruntime==1.16.3
+
+# Optional: Annotation tools (install separately if needed)
+# roboflow
+# cvat-cli

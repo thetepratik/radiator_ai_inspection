@@ -11,6 +11,7 @@ import io
 from datetime import datetime
 import pandas as pd
 import plotly.express as px
+import base64
 from styles import CSS
 
 # Page configuration
@@ -204,6 +205,12 @@ elif page == "Single Inspection":
                 st.markdown(f'<div class="status-badge status-ok">✓ INSPECTION PASSED</div>', unsafe_allow_html=True)
             else:
                 st.markdown(f'<div class="status-badge status-fail">✗ INSPECTION FAILED</div>', unsafe_allow_html=True)
+            
+            # Display annotated image if available
+            if 'annotated_image' in result:
+                st.markdown("### 🖼️ Annotated Result")
+                img_data = base64.b64decode(result['annotated_image'])
+                st.image(img_data, caption="Inspection Analysis (Red=Defect/Missing, Green=OK)", use_column_width=True)
             
             st.divider()
             
