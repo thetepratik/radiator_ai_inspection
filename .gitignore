@@ -1,0 +1,264 @@
+# # Python
+# __pycache__/
+# *.py[cod]
+# *$py.class
+# *.so
+# .Python
+# build/
+# develop-eggs/
+# dist/
+# downloads/
+# eggs/
+# .eggs/
+# lib/
+# lib64/
+# parts/
+# sdist/
+# var/
+# wheels/
+# pip-wheel-metadata/
+# share/python-wheels/
+# *.egg-info/
+# .installed.cfg
+# *.egg
+# MANIFEST
+
+# # Virtual Environment
+# venv/
+# ENV/
+# env/
+# .venv
+# venv.bak/
+# env.bak/
+
+# # IDE
+# .vscode/
+# .idea/
+# *.swp
+# *.swo
+# *~
+# .DS_Store
+# .project
+# .pydevproject
+# .settings/
+# *.sublime-project
+# *.sublime-workspace
+
+# # Testing
+# .tox/
+# .coverage
+# .coverage.*
+# .cache
+# nosetests.xml
+# coverage.xml
+# *.cover
+# *.py,cover
+# .hypothesis/
+# .pytest_cache/
+
+# # Jupyter
+# .ipynb_checkpoints
+# *.ipynb
+
+# # Dataset (large files - don't commit)
+# dataset/images/train/*
+# dataset/images/val/*
+# dataset/images/test/*
+# dataset/labels/train/*
+# dataset/labels/val/*
+# dataset/labels/test/*
+# !dataset/images/.gitkeep
+# !dataset/labels/.gitkeep
+
+# # Model files (large - generated during training)
+# models/radiator_detector/weights/
+# models/radiator_detector/runs/
+# *.pt
+# *.onnx
+# *.tflite
+
+# # Results (generated during operation)
+# results/inspections/*.json
+# results/logs/*.log
+# !results/.gitkeep
+
+# # Generated files
+# *.tmp
+# *.log
+# *.pkl
+# *.pickle
+# *.npz
+# *.npy
+
+# # OS
+# .DS_Store
+# Thumbs.db
+# .directory
+
+# # Documentation
+# docs/.build/
+# site/
+
+# # Local development
+# .env
+# .env.local
+# secrets.txt
+# private_keys/
+
+# # Label Studio exports
+# annotations/exports/
+
+# # CVAT exports
+# exports/
+
+# # Temporary files
+# tmp/
+# temp/
+# *.tmp
+
+
+# .gitignore - Radiator AI Inspection Project
+# https://drive.google.com/drive/u/0/folders/1j-ANrECwDEjDqQ6HnznKJ0x7Vw0leTdP (Replace with your Google Drive link!)
+
+# ================================================================================
+# 📂 DATASET - IMPORTANT! Dataset stored on Google Drive, NOT in Git
+# ================================================================================
+# Large image files should be stored on Google Drive, not in Git
+# Download link: https://drive.google.com/drive/u/0/folders/1j-ANrECwDEjDqQ6HnznKJ0x7Vw0leTdP
+# Instructions: See GOOGLE_DRIVE_SETUP.md
+dataset/images/train/*
+dataset/images/val/*
+dataset/images/test/*
+dataset/labels/train/*
+dataset/labels/val/*
+dataset/labels/test/*
+
+# Keep folder structure (gitkeep files)
+!dataset/images/train/.gitkeep
+!dataset/images/val/.gitkeep
+!dataset/images/test/.gitkeep
+!dataset/labels/train/.gitkeep
+!dataset/labels/val/.gitkeep
+!dataset/labels/test/.gitkeep
+
+# Keep dataset config
+!dataset/dataset.yaml
+
+# ================================================================================
+# 🤖 MODEL FILES - Large files, generate or download locally
+# ================================================================================
+models/radiator_detector/weights/best.pt
+models/radiator_detector/weights/last.pt
+models/radiator_detector/runs/
+*.pt
+*.onnx
+*.tflite
+
+# Keep model directory structure
+!models/.gitkeep
+!models/radiator_detector/.gitkeep
+!models/radiator_detector/weights/.gitkeep
+
+# ================================================================================
+# 📊 RESULTS - Generated locally
+# ================================================================================
+results/inspections/*.json
+results/logs/*.log
+results/*
+!results/.gitkeep
+!results/inspections/.gitkeep
+!results/logs/.gitkeep
+
+# ================================================================================
+# 🐍 PYTHON - Virtual environment & compiled files
+# ================================================================================
+venv/
+ENV/
+env/
+.venv
+venv.bak/
+env.bak/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ================================================================================
+# 🧪 TESTING
+# ================================================================================
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+.pytest_cache/
+.hypothesis/
+
+# ================================================================================
+# 📓 JUPYTER
+# ================================================================================
+.ipynb_checkpoints
+*.ipynb
+
+# ================================================================================
+# 🛠️ IDE
+# ================================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+*.iml
+
+# ================================================================================
+# 🔐 SECRETS
+# ================================================================================
+.env
+.env.local
+secrets.txt
+private_keys/
+api_keys.txt
+
+# ================================================================================
+# 📦 OS
+# ================================================================================
+.DS_Store
+Thumbs.db
+.directory
+.AppleDouble
+.LSOverride
+
+# ================================================================================
+# 🎯 PROJECT SPECIFIC
+# ================================================================================
+roboflow/
+roboflow_exports/
+exports/
+annotations/exports/
+*.tmp
+*.log
+*.pkl
+*.zip
+*.rar

@@ -1,0 +1,11 @@
+# Placeholder coordinates for missing components (region where they should appear)
+# The coordinates are in normalized format (0-1) relative to image width/height
+# x_center, y_center, width, height
+# Adjust these values for your specific radiator layout
+fan: [0.5, 0.3, 0.1, 0.1]
+pipe: [0.5, 0.5, 0.08, 0.15]
+connector: [0.4, 0.6, 0.07, 0.07]
+drain_plug: [0.6, 0.8, 0.05, 0.05]
+rubber_grommet: [0.3, 0.4, 0.05, 0.05]
+clip: [0.5, 0.7, 0.08, 0.04]
+# Add other components as needed

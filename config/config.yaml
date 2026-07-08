@@ -1,0 +1,418 @@
+# Radiator Visual Inspection System - Configuration File
+# Save this as: config/config.yaml
+
+# ============================================================================
+# MODEL CONFIGURATION
+# ============================================================================
+model:
+  # Model size: nano, small, medium, large, xlarge
+  # nano: fastest, lowest accuracy
+  # medium: balanced
+  # large: slower, highest accuracy
+  name: "yolov8m"
+  
+  # Whether to use pre-trained weights
+  pretrained: true
+  
+  # Training parameters
+  epochs: 100
+  batch_size: 16
+  img_size: 640
+  
+  # Device: 'cpu' for CPU, 0 for GPU (first GPU), or 0,1,2,3 for Multi-GPU
+  device: 'cpu'
+  
+  # Learning rate
+  learning_rate: 0.01
+  
+  # Optimizer: SGD, Adam
+  optimizer: "SGD"
+  
+  # Early stopping
+  patience: 20  # Stop if no improvement for N epochs
+  
+  # Save best model
+  save_best: true
+
+# ============================================================================
+# DATASET CONFIGURATION
+# ============================================================================
+dataset:
+  # Path to dataset folder
+  path: "./dataset"
+  
+  # Train/Val/Test split ratios
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  
+  # Number of workers for data loading
+  num_workers: 4
+
+# ============================================================================
+# COMPONENT CLASSES
+# ============================================================================
+components:
+  - barcode
+  - cap
+  - condenser_stud
+  - dust_cap
+  - fan_chip
+  - flap
+  - grommet
+  - leak_test_mark
+  - locking_nut
+  - mickey_mouse
+  - wire
+  
+
+# ============================================================================
+# COMPONENT-SPECIFIC RULES
+# ============================================================================
+component_rules:
+  barcode:
+    required: true
+    min_count: 4
+    max_count: 4
+    detection_threshold: 0.5
+  
+  cap:
+    required: true
+    min_count: 1
+    max_count: 2
+    detection_threshold: 0.2
+  
+  condenser_stud:
+    required: true
+    min_count: 2
+    max_count: 2
+    detection_threshold: 0.2
+  
+  dust_cap:
+    required: true
+    min_count: 1
+    max_count: 2
+    detection_threshold: 0.2
+  
+  fan_chip:
+    required: true
+    min_count: 1
+    max_count: 2
+    detection_threshold: 0.5
+  
+  flap:
+    required: true
+    min_count: 9
+    max_count: 9
+    detection_threshold: 0.5
+  
+  grommet:
+    required: true
+    min_count: 1
+    max_count: 2
+    detection_threshold: 0.2
+  
+  leak_test_mark:
+    required: true
+    min_count: 1
+    max_count: 1
+    detection_threshold: 0.5
+  
+  locking_nut:
+    required: true
+    min_count: 3
+    max_count: 6
+    detection_threshold: 0.5
+  
+  mickey_mouse:
+    required: false
+    min_count: 4  
+    max_count: 8
+    detection_threshold: 0.4
+  
+  wire:
+    required: true
+    min_count: 1
+    max_count: 1
+    detection_threshold: 0.5
+
+# ============================================================================
+# INSPECTION RULES
+# ============================================================================
+inspection:
+  # Required components that must be present for OK status
+  required_components:
+    - barcode
+    - cap
+    - condenser_stud
+    - dust_cap
+    - fan_chip
+    - flap
+    - grommet
+    - leak_test_mark
+    - locking_nut
+    - wire
+  
+  # Minimum confidence threshold for detection
+  min_confidence: 0.5
+  
+  # Maximum allowed defects (0 = no defects allowed)
+  max_defects: 0
+  
+  # Side-specific inspection views
+  # Define which components are expected on each side
+  views:
+    default:
+      name: "Full Inspection"
+      required_components:
+        - barcode
+        - cap
+        - condenser_stud
+        - dust_cap
+        - fan_chip
+        - flap
+        - grommet
+        - leak_test_mark
+        - locking_nut
+        - wire
+    front_side:
+      name: "Front View"
+      required_components:
+        - cap
+        - dust_cap
+        - grommet
+        - condenser_stud 
+    back_side:
+      name: "Back View"
+      required_components:
+        - flap
+        - wire
+        - locking_nut
+        - grommet
+        # - cap
+        - dust_cap
+    top_view:
+      name: "Top View"
+      required_components:
+        - cap
+        # - grommet
+        # - condenser_stud
+        # - leak_test_mark
+        - locking_nut
+        - mickey_mouse
+    bottom_view:
+      name: "Bottom View"
+      required_components:
+        - barcode
+        - mickey_mouse
+        - cap
+        - dust_cap
+        - locking_nut
+  
+  # Damage detection settings
+  damage_detection:
+    enabled: true
+    max_damage_ratio: 0.1  # Allow up to 10% damage
+  
+  # Installation checks
+  check_installation: true
+  check_positioning: true
+  check_spacing: true
+
+# ============================================================================
+# AUGMENTATION SETTINGS
+# ============================================================================
+augmentation:
+  enabled: true
+  factor: 3  # Create 3x augmented versions per image
+  
+  transforms:
+    # Rotation: ±15 degrees
+    rotation: 15
+    
+    # Brightness/Contrast
+    brightness: 0.2
+    contrast: 0.2
+    
+    # Noise
+    gaussian_noise: 0.3
+    
+    # Blur
+    blur: 3
+    
+    # Horizontal flip
+    h_flip: 0.5
+    
+    # Vertical flip
+    v_flip: 0.3
+
+# ============================================================================
+# OUTPUT & LOGGING
+# ============================================================================
+output:
+  # Directory for inspection results
+  results_dir: "./results/inspections"
+  
+  # Directory for logs
+  log_dir: "./results/logs"
+  
+  # Save detailed reports
+  save_reports: true
+  
+  # Report format: json, txt, pdf
+  report_format: "json"
+  
+  # Log file path
+  log_file: "./results/logs/inspection.log"
+  
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  log_level: "INFO"
+
+# ============================================================================
+# API SETTINGS
+# ============================================================================
+api:
+  # Server host
+  host: "0.0.0.0"
+  
+  # Server port
+  port: 8000
+  
+  # Enable CORS
+  cors_enabled: true
+  
+  # Max upload file size (MB)
+  max_file_size: 50
+  
+  # Request timeout (seconds)
+  timeout: 30
+  
+  # Number of worker processes
+  workers: 4
+
+# ============================================================================
+# UI SETTINGS (Streamlit)
+# ============================================================================
+ui:
+  # Page title
+  title: "Radiator Inspection System"
+  
+  # Page icon
+  icon: "🔍"
+  
+  # Layout: wide or centered
+  layout: "wide"
+  
+  # Theme: light or dark
+  theme: "light"
+  
+  # Results per page
+  results_per_page: 10
+
+# ============================================================================
+# PERFORMANCE & HARDWARE
+# ============================================================================
+performance:
+  # Use GPU acceleration
+  use_gpu: false
+  
+  # GPU device ID (0, 1, 2, etc.) - only used if CUDA available
+  gpu_device: 0
+  
+  # CPU threads
+  cpu_threads: 4
+  
+  # Mixed precision training (faster, slightly less accurate)
+  mixed_precision: true
+  
+  # Number of processes for data loading
+  num_workers: 4
+
+# ============================================================================
+# VALIDATION & TESTING
+# ============================================================================
+validation:
+  # Run validation every N epochs
+  val_interval: 5
+  
+  # Metrics to track
+  metrics:
+    - mAP50
+    - mAP50_95
+    - precision
+    - recall
+  
+  # Save validation plots
+  save_plots: true
+
+# ============================================================================
+# ADVANCED SETTINGS
+# ============================================================================
+advanced:
+  # Mosaic augmentation
+  mosaic: 1.0
+  
+  # Mixup augmentation
+  mixup: 0.1
+  
+  # Copy-paste augmentation
+  copy_paste: 0.0
+  
+  # Heat-map smoothing
+  hsv_h: 0.015
+  hsv_s: 0.7
+  hsv_v: 0.4
+  
+  # Degrees of rotation for augmentation
+  degrees: 10
+  
+  # Translation ratio
+  translate: 0.1
+  
+  # Scale ratio
+  scale: 0.5
+  
+  # Perspective augmentation
+  perspective: 0.0
+  
+  # Flip up-down
+  flipud: 0.0
+  
+  # Flip left-right
+  fliplr: 0.5
+
+# ============================================================================
+# ANNOTATIONS & LABELING
+# ============================================================================
+annotations:
+  # Format: yolo, pascal_voc, coco
+  format: "yolo"
+  
+  # Label directory
+  label_dir: "./dataset/labels"
+  
+  # Classes file
+  classes_file: "./annotations/classes.txt"
+  
+  # Validate labels on load
+  validate_labels: true
+
+# ============================================================================
+# DEBUGGING & TESTING
+# ============================================================================
+debug:
+  # Enable debug mode
+  enabled: false
+  
+  # Save debug images
+  save_debug_images: false
+  
+  # Debug output directory
+  debug_dir: "./debug"
+  
+  # Verbose output
+  verbose: true
+
+# ============================================================================
+# END OF CONFIGURATION
+# ============================================================================
