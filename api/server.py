@@ -121,19 +121,21 @@ import yaml
 def draw_annotated_image(
     image: Image.Image,
     detections: list,
-    inspection_result: dict
+    inspection_result: dict,
+    view: str = None
 ) -> str:
     """
     Draw colored bounding boxes on the image and return as base64 PNG.
 
-    - GREEN box  → component detected with OK status
-    - RED box    → component detected but count is insufficient (COUNT_MISMATCH)
-    - RED banner → missing components (no box, never detected)
+    - GREEN box  → valid component detection meeting required confidence threshold
+    - AMBER box  → detection with confidence below threshold or ignored for the selected view
+    - RED box    → missing components outline (no box, never detected)
 
     Args:
         image: Original PIL Image
         detections: List of Detection objects
         inspection_result: Output of generate_final_decision()
+        view: Optional side/view name
 
     Returns:
         Base64-encoded PNG string
@@ -145,6 +147,10 @@ def draw_annotated_image(
     present_components = inspection_result.get('component_presence', {}).get('present_components', {})
     count_mismatches = set(inspection_result.get('component_presence', {}).get('count_mismatches', []))
     missing_components = inspection_result.get('component_presence', {}).get('missing_components', [])
+
+    comp_rules = {}
+    if inspection_engine and hasattr(inspection_engine, 'config'):
+        comp_rules = inspection_engine.config.get('component_rules', {})
 
     # Try to load a font; fall back to default if unavailable
     try:
@@ -178,13 +184,16 @@ def draw_annotated_image(
         x2 = int(x_c_pix + w_pix / 2)
         y2 = int(y_c_pix + h_pix / 2)
 
-        # Decide colour
-        if class_name in count_mismatches:
-            color = (220, 38, 38)   # red — detected but not enough
-        elif class_name in present_components:
-            color = (34, 197, 94)   # green — detected and OK
+        # Check component threshold (default 0.5)
+        threshold = comp_rules.get(class_name, {}).get('detection_threshold', 0.5)
+
+        # Decide colour based on whether this detection meets required confidence and view rules
+        if view == 'back_side' and class_name == 'cap' and (0 < y_c < 0.5 or y_c_pix < img_h * 0.5):
+            color = (234, 179, 8)   # amber — top-left cap ignored for Back Side view
+        elif conf >= threshold:
+            color = (34, 197, 94)   # green — valid detection meeting required confidence
         else:
-            color = (234, 179, 8)   # amber — detected but not required / low conf
+            color = (234, 179, 8)   # amber — low confidence / below threshold
 
         # Draw rectangle
         draw.rectangle([x1, y1, x2, y2], outline=color, width=BOX_WIDTH)
@@ -341,7 +350,7 @@ async def inspect_radiator(file: UploadFile = File(...), view: str = None):
         inspection_result['image_filename'] = file.filename
         
         # --- Annotate image with colored bounding boxes ---
-        annotated_b64 = draw_annotated_image(image, detections, inspection_result)
+        annotated_b64 = draw_annotated_image(image, detections, inspection_result, view=view)
         
         # Save result
         result_id = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -375,6 +384,45 @@ async def inspect_radiator(file: UploadFile = File(...), view: str = None):
     except Exception as e:
         logger.error(f"✗ Error processing image: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def auto_detect_view(detections: list, image: Image.Image = None) -> str:
+    """
+    Infer the radiator side/view from the set of detected components.
+
+    Fingerprint rules (highest-specificity first):
+      - 'flap' present                          → back_side
+      - 'barcode' present                       → bottom_view
+      - 'mickey_mouse' present                  → top_view
+      - 'condenser_stud' + 'grommet' present    → top_view  (both are top_view indicators)
+      - 'condenser_stud' + portrait image       → top_view  (narrow edge view)
+      - 'condenser_stud' alone                  → front_side
+      - fallback                                → default (full inspection)
+    """
+    detected_classes = {d.class_name for d in detections if d.confidence >= 0.3}
+    logger.info(f"Auto-detect classes found: {detected_classes}")
+
+    if 'flap' in detected_classes:
+        return 'back_side'
+    elif 'barcode' in detected_classes:
+        return 'bottom_view'
+    elif 'mickey_mouse' in detected_classes:
+        return 'top_view'
+    elif 'condenser_stud' in detected_classes:
+        # Both top_view and front_side can have condenser_stud.
+        # Distinguish using image aspect ratio:
+        # top/bottom edge views are portrait (taller than wide),
+        # front/back views are landscape (wider than tall).
+        if image is not None:
+            img_w, img_h = image.size
+            aspect_ratio = img_w / img_h
+            logger.info(f"Auto-detect aspect ratio: {aspect_ratio:.2f} (w={img_w}, h={img_h})")
+            if aspect_ratio < 0.85:  # portrait / narrow → edge view (top)
+                return 'top_view'
+
+        return 'front_side'
+    else:
+        return 'default'
 
 
 @app.post("/inspect/batch")
@@ -422,11 +470,15 @@ async def inspect_batch(files: list[UploadFile] = File(...), view: str = None):
                         )
                         detections.append(detection)
             
+            # Determine view: if 'auto', infer from detections; otherwise use the passed view
+            effective_view = auto_detect_view(detections, image=image) if view == 'auto' else view
+
             # Generate inspection report
-            inspection_result = inspection_engine.generate_final_decision(detections, view=view)
-            
+            inspection_result = inspection_engine.generate_final_decision(detections, view=effective_view)
+
             results.append({
                 "filename": file.filename,
+                "detected_view": effective_view if view == 'auto' else view or "default",
                 "status": inspection_result['status'],
                 "confidence": inspection_result['confidence_score'],
                 "failures": inspection_result['failures']

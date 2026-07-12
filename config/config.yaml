@@ -104,13 +104,13 @@ component_rules:
     required: true
     min_count: 9
     max_count: 9
-    detection_threshold: 0.5
+    detection_threshold: 0.3
   
   grommet:
     required: true
     min_count: 1
     max_count: 2
-    detection_threshold: 0.2
+    detection_threshold: 0.5
   
   leak_test_mark:
     required: true
@@ -122,13 +122,13 @@ component_rules:
     required: true
     min_count: 3
     max_count: 6
-    detection_threshold: 0.5
+    detection_threshold: 0.2
   
   mickey_mouse:
     required: false
     min_count: 4  
     max_count: 8
-    detection_threshold: 0.4
+    detection_threshold: 0.2
   
   wire:
     required: true
@@ -179,9 +179,10 @@ inspection:
       name: "Front View"
       required_components:
         - cap
-        - dust_cap
-        - grommet
-        - condenser_stud 
+        - locking_nut
+        #- dust_cap
+        #- grommet
+        #- condenser_stud 
     back_side:
       name: "Back View"
       required_components:
@@ -189,17 +190,17 @@ inspection:
         - wire
         - locking_nut
         - grommet
-        # - cap
+        - cap
         - dust_cap
     top_view:
       name: "Top View"
       required_components:
         - cap
-        # - grommet
-        # - condenser_stud
+        #- grommet
+        - condenser_stud
         # - leak_test_mark
-        - locking_nut
-        - mickey_mouse
+        #- locking_nut
+        #- mickey_mouse
     bottom_view:
       name: "Bottom View"
       required_components:

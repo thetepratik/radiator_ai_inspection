@@ -269,14 +269,16 @@ elif page == "Batch Inspection":
         accept_multiple_files=True
     )
     
-    # View Selection for Batch
-    available_views = ["default", "front_side", "back_side", "top_view", "bottom_view"]
+    # View Selection for Batch — 'auto' lets the system infer the side per image
+    available_views = ["auto", "default", "front_side", "back_side", "top_view", "bottom_view"]
     batch_view = st.selectbox(
         "Select Side/View for this batch",
         options=available_views,
-        format_func=lambda x: x.replace('_', ' ').title(),
+        format_func=lambda x: "🤖 Auto-Detect (per image)" if x == "auto" else x.replace('_', ' ').title(),
         key="batch_view_select"
     )
+    if batch_view == "auto":
+        st.info("🤖 **Auto-Detect** mode: the system will automatically infer the correct view (Back Side, Front Side, etc.) for each uploaded image individually.")
     
     if uploaded_files:
         st.write(f"📁 {len(uploaded_files)} image(s) selected")
@@ -286,7 +288,15 @@ elif page == "Batch Inspection":
                 try:
                     # Prepare files
                     files = [('files', (f.name, f.getvalue())) for f in uploaded_files]
-                    params = {'view': batch_view} if batch_view != "default" else {}
+                    # 'auto' sends view=auto so the server infers view per image
+                    # 'default' sends no view param (full inspection)
+                    # any specific view sends that view for all images
+                    if batch_view == "auto":
+                        params = {'view': 'auto'}
+                    elif batch_view == "default":
+                        params = {}
+                    else:
+                        params = {'view': batch_view}
                     response = requests.post(f"{API_URL}/inspect/batch", files=files, params=params)
                     
                     if response.status_code == 200:
@@ -296,8 +306,14 @@ elif page == "Batch Inspection":
                         st.divider()
                         st.subheader("📊 Batch Results")
                         
-                        results_df = pd.DataFrame(batch_result['results'])
-                        st.dataframe(results_df, width='stretch')
+                        raw_results = batch_result['results']
+                        # Build display dataframe — show Detected View only in auto mode
+                        display_cols = ['filename', 'status', 'confidence', 'failures']
+                        if batch_view == 'auto':
+                            display_cols = ['filename', 'detected_view', 'status', 'confidence', 'failures']
+                        results_df = pd.DataFrame(raw_results)[display_cols]
+                        results_df['confidence'] = results_df['confidence'].apply(lambda x: f"{x:.1%}" if isinstance(x, float) else x)
+                        st.dataframe(results_df, width='stretch', hide_index=True)
                         
                         # Summary
                         col1, col2, col3, col4 = st.columns(4)

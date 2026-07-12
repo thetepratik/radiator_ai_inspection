@@ -76,6 +76,10 @@ class InspectionEngine:
         
         # Count detections per component using per-component detection thresholds when available
         for detection in detections:
+            # For back_side view, only expect the bottom-right cap (ignore any top-left cap where y_center < 0.5)
+            if view == 'back_side' and detection.class_name == 'cap' and detection.bbox[1] < 0.5:
+                continue
+
             # Per-component threshold falls back to global min_confidence
             comp_rule = self.config.get('component_rules', {}).get(detection.class_name, {})
             threshold = comp_rule.get('detection_threshold', self.min_confidence)
