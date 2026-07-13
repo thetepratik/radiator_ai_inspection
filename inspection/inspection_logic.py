@@ -199,19 +199,79 @@ class InspectionEngine:
         
         return installation_results
     
-    def generate_final_decision(self, detections: List[Detection], view: str = None) -> Dict:
+    def detect_view_from_detections(self, detections: List[Detection], filename: str = None) -> str:
+        """
+        Detect the view/side of the radiator based on filename and/or detected components.
+        
+        Args:
+            detections: List of detected components
+            filename: Optional filename of the uploaded image
+            
+        Returns:
+            Best matching view name ('front_side', 'back_side', 'top_view', 'bottom_view', 'default')
+        """
+        # 1. Filename heuristic
+        if filename:
+            fn_lower = filename.lower()
+            if "front" in fn_lower:
+                return "front_side"
+            if "back" in fn_lower:
+                return "back_side"
+            if "top" in fn_lower:
+                return "top_view"
+            if "bottom" in fn_lower:
+                return "bottom_view"
+
+        # 2. Component heuristic
+        # We look at detections with a confidence above a reasonable threshold
+        detected_classes = {d.class_name for d in detections if d.confidence >= 0.25}
+
+        # Strong unique markers
+        if "condenser_stud" in detected_classes:
+            return "front_side"
+        if "flap" in detected_classes or "wire" in detected_classes:
+            return "back_side"
+        if "barcode" in detected_classes:
+            return "bottom_view"
+        if "mickey_mouse" in detected_classes:
+            return "top_view"
+
+        # 3. Score-based fallback based on configuration views
+        view_scores = {}
+        for view_name, view_cfg in self.views.items():
+            if view_name == 'default':
+                continue
+            req_components = view_cfg.get('required_components', [])
+            # Calculate how many of the required components are detected
+            score = sum(1 for c in req_components if c in detected_classes)
+            view_scores[view_name] = score
+
+        if view_scores:
+            best_view = max(view_scores, key=view_scores.get)
+            if view_scores[best_view] > 0:
+                return best_view
+
+        return "default"
+
+    def generate_final_decision(self, detections: List[Detection], view: str = None, filename: str = None) -> Dict:
         """
         Generate final OK/NOT OK decision based on all checks
         
         Args:
             detections: List of detected components
-            view: Optional specific view/side to check against
+            view: Optional specific view/side to check against ('auto' or None enables auto-detection)
+            filename: Optional filename for auto-view detection heuristics
             
         Returns:
             Final inspection result dictionary
         """
+        # Resolve the actual view to use
+        actual_view = view
+        if not view or view == "auto":
+            actual_view = self.detect_view_from_detections(detections, filename)
+
         # Perform all checks
-        presence_check = self.check_component_presence(detections, view=view)
+        presence_check = self.check_component_presence(detections, view=actual_view)
         condition_check = self.check_component_condition(detections)
         installation_check = self.check_installation_rules(detections)
         
@@ -246,6 +306,7 @@ class InspectionEngine:
         result = {
             'status': final_status,
             'timestamp': datetime.now().isoformat(),
+            'detected_view': actual_view,
             'component_presence': presence_check,
             'component_condition': condition_check,
             'installation_check': installation_check,

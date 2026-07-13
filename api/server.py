@@ -43,19 +43,30 @@ async def lifespan(app: FastAPI):
     model_path = Path("models/radiator_detector/weights/best.pt")
     
     if not model_path.exists():
-        # Try to find any other weights in models/
-        logger.warning(f"⚠️ Model weights not found at {model_path}")
-        logger.info("Searching for alternative weights...")
-        
-        # Look for any .pt files in models directory
-        alternative_weights = list(Path("models").rglob("*.pt"))
-        if alternative_weights:
-            model_path = alternative_weights[0]
-            logger.info(f"Found alternative weights: {model_path}")
+        # Fallback to EDI2 directory where the user's weights actually are
+        fallback_path = Path(parent_dir).parent / "EDI2" / "radiator_ai_inspection" / "models" / "radiator_detector" / "weights" / "best.pt"
+        if fallback_path.exists():
+            model_path = fallback_path
+            logger.info(f"Found model weights in EDI2 fallback folder: {model_path}")
         else:
-            logger.error("❌ No model weights (.pt files) found in the 'models' directory.")
-            logger.info("Please run 'python scripts/train_model.py' to train the model first.")
-            # We don't raise here to allow the server to start, but model will be None
+            logger.warning(f"⚠️ Model weights not found at {model_path} or fallback.")
+            logger.info("Searching for alternative weights in both directories...")
+            
+            # Look for any .pt files in local models directory
+            alternative_weights = list(Path("models").rglob("*.pt"))
+            
+            # Look in EDI2 directory
+            if not alternative_weights:
+                edi2_models = Path(parent_dir).parent / "EDI2" / "radiator_ai_inspection" / "models"
+                if edi2_models.exists():
+                    alternative_weights = list(edi2_models.rglob("*.pt"))
+            
+            if alternative_weights:
+                model_path = alternative_weights[0]
+                logger.info(f"Found alternative weights: {model_path}")
+            else:
+                logger.error("❌ No model weights (.pt files) found in any models directory.")
+                logger.info("Please run 'python scripts/train_model.py' to train the model first.")
     
     if model_path.exists():
         try:
@@ -337,7 +348,7 @@ async def inspect_radiator(file: UploadFile = File(...), view: str = None):
                     detections.append(detection)
         
         # Generate inspection report
-        inspection_result = inspection_engine.generate_final_decision(detections, view=view)
+        inspection_result = inspection_engine.generate_final_decision(detections, view=view, filename=file.filename)
         inspection_result['image_filename'] = file.filename
         
         # --- Annotate image with colored bounding boxes ---
@@ -355,6 +366,7 @@ async def inspect_radiator(file: UploadFile = File(...), view: str = None):
         return {
             "result_id": result_id,
             "status": inspection_result['status'],
+            "detected_view": inspection_result.get('detected_view', 'unknown'),
             "timestamp": inspection_result['timestamp'],
             "components": inspection_result['component_presence']['present_components'],
             "missing_components": inspection_result['component_presence']['missing_components'],
@@ -422,11 +434,12 @@ async def inspect_batch(files: list[UploadFile] = File(...), view: str = None):
                         )
                         detections.append(detection)
             
-            # Generate inspection report
-            inspection_result = inspection_engine.generate_final_decision(detections, view=view)
+            # Generate inspection report (enables auto-view detection by passing filename)
+            inspection_result = inspection_engine.generate_final_decision(detections, view=view, filename=file.filename)
             
             results.append({
                 "filename": file.filename,
+                "detected_view": inspection_result.get('detected_view', 'unknown'),
                 "status": inspection_result['status'],
                 "confidence": inspection_result['confidence_score'],
                 "failures": inspection_result['failures']

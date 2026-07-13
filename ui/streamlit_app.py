@@ -158,12 +158,12 @@ elif page == "Single Inspection":
         )
         
         # View Selection
-        available_views = ["default", "front_side", "back_side", "top_view", "bottom_view"]
+        available_views = ["auto", "default", "front_side", "back_side", "top_view", "bottom_view"]
         selected_view = st.selectbox(
             "Select Inspection Side/View",
             options=available_views,
-            format_func=lambda x: x.replace('_', ' ').title(),
-            help="Specify which side of the radiator you are inspecting"
+            format_func=lambda x: "Auto-Detect" if x == "auto" else x.replace('_', ' ').title(),
+            help="Specify which side of the radiator you are inspecting, or select Auto-Detect."
         )
         
         if uploaded_file is not None:
@@ -177,7 +177,7 @@ elif page == "Single Inspection":
                     try:
                         # Send to API
                         files = {'file': (uploaded_file.name, uploaded_file.getvalue())}
-                        params = {'view': selected_view} if selected_view != "default" else {}
+                        params = {'view': selected_view} if selected_view != "auto" else {}
                         response = requests.post(f"{API_URL}/inspect", files=files, params=params)
                         
                         if response.status_code == 200:
@@ -215,12 +215,14 @@ elif page == "Single Inspection":
             st.divider()
             
             # Metrics
-            col_a, col_b, col_c = st.columns(3)
+            col_a, col_b, col_c, col_d = st.columns(4)
             with col_a:
                 st.metric("Status", status)
             with col_b:
-                st.metric("Confidence", f"{result['confidence']:.1%}")
+                st.metric("Detected View", result.get('detected_view', 'unknown').replace('_', ' ').title())
             with col_c:
+                st.metric("Confidence", f"{result['confidence']:.1%}")
+            with col_d:
                 st.metric("Timestamp", result['timestamp'][-8:])
             
             st.divider()
@@ -270,11 +272,11 @@ elif page == "Batch Inspection":
     )
     
     # View Selection for Batch
-    available_views = ["default", "front_side", "back_side", "top_view", "bottom_view"]
+    available_views = ["auto", "default", "front_side", "back_side", "top_view", "bottom_view"]
     batch_view = st.selectbox(
         "Select Side/View for this batch",
         options=available_views,
-        format_func=lambda x: x.replace('_', ' ').title(),
+        format_func=lambda x: "Auto-Detect" if x == "auto" else x.replace('_', ' ').title(),
         key="batch_view_select"
     )
     
@@ -286,7 +288,7 @@ elif page == "Batch Inspection":
                 try:
                     # Prepare files
                     files = [('files', (f.name, f.getvalue())) for f in uploaded_files]
-                    params = {'view': batch_view} if batch_view != "default" else {}
+                    params = {'view': batch_view} if batch_view != "auto" else {}
                     response = requests.post(f"{API_URL}/inspect/batch", files=files, params=params)
                     
                     if response.status_code == 200:
@@ -296,8 +298,31 @@ elif page == "Batch Inspection":
                         st.divider()
                         st.subheader("📊 Batch Results")
                         
+                        # Multiply confidence by 100 for proper percentage display
+                        for r in batch_result['results']:
+                            if 'confidence' in r:
+                                r['confidence'] = r['confidence'] * 100
+                                
+                        # Format detected view for readability
+                        for r in batch_result['results']:
+                            if 'detected_view' in r:
+                                r['detected_view'] = r['detected_view'].replace('_', ' ').title()
+
                         results_df = pd.DataFrame(batch_result['results'])
-                        st.dataframe(results_df, width='stretch')
+                        st.dataframe(results_df, use_container_width=True,
+                            column_config={
+                                "filename": "Image",
+                                "detected_view": "Detected View",
+                                "status": "Status",
+                                "confidence": st.column_config.NumberColumn(
+                                    "Confidence",
+                                    format="%.1f%%",
+                                    help="AI Confidence Score"
+                                ),
+                                "failures": "Defects Found"
+                            },
+                            hide_index=True
+                        )
                         
                         # Summary
                         col1, col2, col3, col4 = st.columns(4)
